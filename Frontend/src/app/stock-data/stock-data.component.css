@@ -1,4 +1,7 @@
-
+#chart {
+    background: #0e3040;
+    color: #67809f;
+  }
   .overlay {
     position: absolute;
     width: 100%;
@@ -9,3 +12,30 @@
     opacity: 0.5;
     filter: alpha(opacity=50);
  }
+
+.button {
+    cursor: pointer;
+    text-align: center;
+    width: 50%;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    display: inline-block;
+}
+.firstButton {
+    border-right: 1px solid rgba(215, 215, 215, 1)
+}
+.unhighlight {
+    color: #0071C5
+}
+.unhighlight:hover {
+ background-color: rgba(242, 242, 242, 1);
+}
+.highlight {
+    background-color: rgba(26, 62, 112, 1);
+    color: white;
+}
+.buttons {
+    width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+}

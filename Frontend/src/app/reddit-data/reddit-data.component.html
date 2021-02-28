@@ -1,0 +1,4 @@
+<blockquote *ngFor = "let post of redditPosts" class="reddit-card" data-card-created="1614488172" >
+    <a [href]="post.link">{{post.title}}</a> from <a [href]="'http://www.reddit.com/r/'+post.subreddit">{{post.subreddit}}</a>
+</blockquote>
+
