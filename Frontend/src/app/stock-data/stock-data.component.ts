@@ -14,8 +14,9 @@ import { StockRow } from './types';
 export class StockDataComponent implements OnInit {
  
   stockData: StockRow[]
-  stock: string = "N/A"
- 
+  stock: string;
+  
+  selected: string = "news";
   timeRanges = [{
       display: "5 Days",
       value: '5d'
@@ -62,9 +63,8 @@ export class StockDataComponent implements OnInit {
     this.route.queryParams.subscribe((queryParams) => {
       const stock: string = queryParams.stock
       if(stock) {
-        this.stock = stock  
+        this.stock = stock 
         this.update()
-        
       }
       
       
@@ -111,11 +111,12 @@ createChart() {
   const [xScale, yScale] = this.setUpAxes()
   this.drawLine({ xScale, yScale })
   this.renderVolumeChart(xScale)
+
 }
 setUpChart() {
      this.width = window.innerWidth - (this.margins.left + this.margins.right)
 
-     this.height = (window.innerHeight * 0.6) - (this.margins.top + this.margins.bottom)
+     this.height = (window.innerHeight * 0.55) - (this.margins.top + this.margins.bottom)
      this.svg = d3.select("#chart")
                 .append("svg")
                 .attr('width', this.width + this.margins.left + this.margins.right)
@@ -214,6 +215,9 @@ onRangeChange(timeRange) {
 
     })
 
+}
+onTabSelect(ele) {
+  this.selected = ele
 }
 
 }
