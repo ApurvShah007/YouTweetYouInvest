@@ -78,7 +78,8 @@ createChart() {
 }
 setUpChart() {
      this.width = window.innerWidth - (this.margins.left + this.margins.right)
-     this.height = window.innerHeight - (this.margins.top + this.margins.bottom)
+
+     this.height = (window.innerHeight * 0.6) - (this.margins.top + this.margins.bottom)
      this.svg = d3.select("#chart")
                 .append("svg")
                 .attr('width', this.width + this.margins.left + this.margins.right)
