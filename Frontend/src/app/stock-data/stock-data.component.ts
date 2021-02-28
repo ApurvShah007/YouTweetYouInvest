@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, RouteConfigLoadStart } from '@angular/router';
 import {map, tap} from 'rxjs/operators';
 import * as d3 from "d3";
 
@@ -14,6 +14,36 @@ import { StockRow } from './types';
 export class StockDataComponent implements OnInit {
  
   stockData: StockRow[]
+  stock: string = "N/A"
+ 
+  timeRanges = [{
+      display: "5 Days",
+      value: '5d'
+    }, {
+      display: '1 Month',
+      value: '1mo'
+    },
+    {
+      display: "3 Months",
+      value: '3mo'
+    },{
+      display: "6 Months",
+      value: '6mo'
+    },{
+      display: "1 Year",
+      value: '1y'
+    },
+    {
+      display: "2 Years",
+      value: '2y'
+    },
+    {
+      display: "5 Years",
+      value: '5y'
+    },
+
+  ]
+  timeRange = this.timeRanges[4]
   stockDataLoaded: boolean = false
   margins = {
     top: 50,
@@ -32,17 +62,23 @@ export class StockDataComponent implements OnInit {
     this.route.queryParams.subscribe((queryParams) => {
       const stock: string = queryParams.stock
       if(stock) {
-        this.getStockData(stock)
-        .pipe(tap(() => this.stockDataLoaded = true))
-        .subscribe(data => {
-          this.stockData = data
-          this.createChart()
-       })
+        this.stock = stock  
+        this.update()
         
       }
       
       
     })
+  }
+  update() {
+   if(this.stock) {
+      this.getStockData(this.stock, this.timeRange.value)
+      .pipe(tap(() => this.stockDataLoaded = true))
+      .subscribe(data => {
+        this.stockData = data
+        this.createChart()
+    })
+   }
   }
   responsivefy(svg) {
     // get container + svg aspect ratio
@@ -73,7 +109,7 @@ export class StockDataComponent implements OnInit {
 createChart() {
   this.setUpChart()
   const [xScale, yScale] = this.setUpAxes()
-  this.drawLine(xScale, yScale)
+  this.drawLine({ xScale, yScale })
   this.renderVolumeChart(xScale)
 }
 setUpChart() {
@@ -91,20 +127,25 @@ setUpChart() {
 
 }
 setUpAxes() {
-    const [xMin, xMax] =  [d3.min(this.stockData, row => row.date), d3.max(this.stockData, row => row.date)]
-    const [yMin, yMax] =  [d3.min(this.stockData, row => row.close), d3.max(this.stockData, row => row.close)]
-    const xScale = d3.scaleTime().domain([xMin, xMax]).range([0, this.width])
-    const yScale = d3.scaleLinear().domain([yMin - 10, yMax]).range([this.height, 0])
+    const [xScale, yScale] = this.getScales()
     this.svg.append('g').attr('id', 'xAxis').attr('transform', `translate(0, ${this.height})`).call(d3.axisBottom(xScale))
     this.svg.append('g').attr('id', 'yAxis').attr('transform', `translate(${this.width}, 0)`).call(d3.axisLeft(yScale))
     return [xScale, yScale]
 }
-drawLine(xScale, yScale) {
+getScales() {
+  const [xMin, xMax] =  [d3.min(this.stockData, row => row.date), d3.max(this.stockData, row => row.date)]
+  const [yMin, yMax] =  [d3.min(this.stockData, row => row.close), d3.max(this.stockData, row => row.close)]
+  const xScale = d3.scaleTime().domain([xMin, xMax]).range([0, this.width])
+  const yScale = d3.scaleLinear().domain([yMin - 10, yMax]).range([this.height, 0])
+  return [xScale, yScale]
+}
+drawLine({ xScale, yScale }: { xScale; yScale; }) {
   const line = d3.line().x(d => xScale(d['date'])).y(d => yScale(d['close']))
   this.svg.append('path').data([this.stockData]).style('fill', 'none').attr('id', 'priceChart').attr('stroke', 'steelblue').attr('stroke-width', '1.5').attr('d', line)
 }
 renderVolumeChart(xScale) {
   const volumes = this.stockData.filter(row => row.hasOwnProperty('volume') && row.volume !== null && row.volume > 0)
+
   const [yMin, yMax] = [d3.min(volumes, row => row.volume), d3.max(volumes, row => row.volume)]
   const yScale = d3.scaleLinear().domain([yMin, yMax]).range([this.height, 0])
   this.svg.selectAll().data(volumes).enter().append('rect').attr('x', d => xScale(d['date'])).attr('y', d => yScale(d['volume'])).attr('fill', 
@@ -117,26 +158,25 @@ renderVolumeChart(xScale) {
   }).attr('width', 1).attr('height', d => this.height - yScale(d['volume']))
   
 }
-getStockData(stock: string = null) {
+getStockData(stock: string, range) {
 
-  return this.stockService.getStockData(stock, "US")
-    .pipe(map((data) => {
-        if(data  && data['prices']) {
-          const prices: any[] = data['prices']
+  return this.stockService.getStockData(stock, range, "US")
+    .pipe(map((data: any) => {
+        if(data  && data['chart'] && data['chart']['result']) {
+          const dates: any[] = data.chart.result[0].timestamp
+          const dataPoints = data.chart.result[0].indicators.quote[0]
+     
           const cleanData: StockRow[] = []
-          prices.forEach((row: any) => {
-            if(row.hasOwnProperty("close")) {
-              cleanData.push({
-                close: row.close,
-                date: new Date(row.date * 1000),
-                adjclose: row.adjclose || 0,
-                open: row.open || 0,
-                high: row.high || 0,
-       
-                low: row.low || 0,
-                volume: row.volume || 0
-              })
-            }
+          dates.forEach((date: any, index) => {
+            cleanData.push({
+              date: new Date(date * 1000),
+              close: dataPoints.close[index],
+              open: dataPoints.open[index],
+              volume: dataPoints.volume[index],
+              high: dataPoints.high[index],
+              low: dataPoints.low[index]
+
+            })
           })
           return cleanData
         }else {
@@ -145,6 +185,34 @@ getStockData(stock: string = null) {
 
     }))
   
+
+}
+onRangeChange(timeRange) {
+  this.timeRange = timeRange
+  this.getStockData(this.stock, this.timeRange.value)
+      .subscribe(data => {
+        this.stockData = data
+        const [xScale, yScale] = this.getScales()
+        d3.select('#xAxis').call(d3.axisBottom(xScale))
+        d3.select('#yAxis').call(d3.axisLeft(yScale))
+        d3.select('#priceChart').remove()
+        this.drawLine({xScale, yScale})
+        console.log(this.stockData)
+        const volumes = this.stockData.filter(row => row.hasOwnProperty('volume') && row.volume !== null && row.volume > 0)
+        const [yMin, yMax] = [d3.min(volumes, row => row.volume), d3.max(volumes, row => row.volume)]
+        const yScale1 = d3.scaleLinear().domain([yMin, yMax]).range([this.height, 0])
+        d3.select('svg').selectAll('rect').remove()
+        this.svg.selectAll().data(volumes).enter().append('rect').attr('x', d => xScale(d['date'])).attr('y', d => yScale1(d['volume'])).attr('fill', 
+        (d, i) => {
+          if(i === 0 ){
+            return '#03a678'
+          }else {
+            return volumes[i - 1].close > d.close ? '#c0392b' : '#03a678'; 
+          }
+      }).attr('width', 1).attr('height', d => this.height - yScale1(d['volume']))
+       
+
+    })
 
 }
 
